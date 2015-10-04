@@ -21,11 +21,14 @@ class wp_ulike_widget extends WP_Widget {
 	 * @updated         2.3	 
 	 * @return			String
 	 */		
-	public function most_liked_posts($numberOf, $before, $after, $show_count, $show_thumb, $trim, $sizeOf) {
+	public function most_liked_posts($numberOf, $before, $after, $show_count, $show_thumb, $trim, $sizeOf, $time_span) {
 		global $wpdb;
 
 		$request = "SELECT ID, post_title, meta_value FROM ".$wpdb->prefix."posts, ".$wpdb->prefix."postmeta";
 		$request .= " WHERE ".$wpdb->prefix."posts.ID = ".$wpdb->prefix."postmeta.post_id";
+		if ( $time_span != 'all' ) {
+			$request .= " AND post_date >= DATE_SUB(CURDATE(), INTERVAL $time_span DAY)";
+		}
 		$request .= " AND post_status='publish' AND meta_key='_liked'";
 		$request .= " ORDER BY ".$wpdb->prefix."postmeta.meta_value+0 DESC LIMIT $numberOf";
 		$posts = $wpdb->get_results($request);
@@ -234,13 +237,14 @@ class wp_ulike_widget extends WP_Widget {
 		$profile_url= $instance['profile_url'];
 		$show_count = (isset($instance['show_count']) == true ) ? 1 : 0;
 		$show_thumb = (isset($instance['show_thumb']) == true ) ? 1 : 0;
+		$time_span= $instance['time_span'];
 		
 		echo $args['before_widget'];
 		if ( ! empty( $title ) )
 		echo $args['before_title'] . $title . $args['after_title'];
 		echo '<ul class="most_liked_'.$type.' wp_ulike_style_'.$style.'">';
 		if($type == "post")
-		echo $this->most_liked_posts($numberOf, '<li>', '</li>', $show_count, $show_thumb, $trim, $sizeOf);
+		echo $this->most_liked_posts($numberOf, '<li>', '</li>', $show_count, $show_thumb, $trim, $sizeOf, $time_span);
 		else if($type == "comment")
 		echo $this->most_liked_comments($numberOf, '<li>', '</li>', $show_count, $show_thumb, $trim, $sizeOf);
 		else if($type == "activity")
@@ -263,7 +267,7 @@ class wp_ulike_widget extends WP_Widget {
 	 */			
 	public function form( $instance ) {
 		//Set up some default widget settings.
-		$defaults = array( 'title' => __('Most Liked', 'alimir'), 'count' => 10, 'size' => 32, 'trim' => 10, 'profile_url' => 'bp', 'show_count' => false, 'show_thumb' => false, 'type' => 'post', 'style' => 'simple' );
+		$defaults = array( 'title' => __('Most Liked', 'alimir'), 'count' => 10, 'size' => 32, 'trim' => 10, 'profile_url' => 'bp', 'show_count' => false, 'show_thumb' => false, 'type' => 'post', 'style' => 'simple', 'time_span' => 'all' );
 		$instance = wp_parse_args( (array) $instance, $defaults );
 		?>
 		<p>
@@ -325,6 +329,21 @@ class wp_ulike_widget extends WP_Widget {
 			<input class="checkbox" type="checkbox" id="<?php echo $this->get_field_id( 'show_thumb' ); ?>" name="<?php echo $this->get_field_name( 'show_thumb' ); ?>" <?php if($instance['show_thumb'] == true) echo 'checked="checked"'; ?> /> 
 			<label for="<?php echo $this->get_field_id( 'show_thumb' ); ?>"><?php _e('Activate Thumbnail/Avatar', 'alimir'); ?></label>
 		</p>
+
+		<p>
+			<label for="<?php echo $this->get_field_id( 'time_span' ); ?>"><?php _e('Time span:', 'alimir'); ?></label>
+			<select name="<?php echo $this->get_field_name( 'time_span' ); ?>" style="width:100%;">
+				<option value="1" <?php selected( $instance['time_span'], "1" ); ?>><?php echo _e('1 day', 'alimir'); ?></option>
+				<option value="7" <?php selected( $instance['time_span'], "7" ); ?>><?php echo _e('1 week', 'alimir'); ?></option>
+				<option value="14" <?php selected( $instance['time_span'], "14" ); ?>><?php echo _e('2 weeks', 'alimir'); ?></option>
+				<option value="30" <?php selected( $instance['time_span'], "30" ); ?>><?php echo _e('1 month', 'alimir'); ?></option>
+				<option value="60" <?php selected( $instance['time_span'], "60" ); ?>><?php echo _e('2 months', 'alimir'); ?></option>
+				<option value="90" <?php selected( $instance['time_span'], "90" ); ?>><?php echo _e('3 months', 'alimir'); ?></option>
+				<option value="180" <?php selected( $instance['time_span'], "180" ); ?>><?php echo _e('6 months', 'alimir'); ?></option>
+				<option value="365" <?php selected( $instance['time_span'], "365" ); ?>><?php echo _e('1 year', 'alimir'); ?></option>
+				<option value="all" <?php selected( $instance['time_span'], "all" ); ?>><?php echo _e('All time', 'alimir'); ?></option>
+			</select>
+		</p>
 		
 		<script>
 		jQuery(document).ready(function($) {
@@ -357,6 +376,7 @@ class wp_ulike_widget extends WP_Widget {
 		$instance['profile_url'] = strip_tags( $new_instance['profile_url'] );
 		$instance['show_count'] = $new_instance['show_count'];
 		$instance['show_thumb'] = $new_instance['show_thumb'];
+		$instance['time_span'] = strip_tags( $new_instance['time_span'] );
 
 		return $instance;
 	}
