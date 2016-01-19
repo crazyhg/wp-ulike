@@ -27,7 +27,7 @@ class wp_ulike_widget extends WP_Widget {
 		$request = "SELECT ID, post_title, meta_value FROM ".$wpdb->prefix."posts, ".$wpdb->prefix."postmeta";
 		$request .= " WHERE ".$wpdb->prefix."posts.ID = ".$wpdb->prefix."postmeta.post_id";
 		if ( $time_span != 'all' ) {
-			$request .= " AND post_date >= DATE_SUB(CURDATE(), INTERVAL $time_span DAY)";
+			$request .= " AND DATE(post_date) >= DATE_SUB(CURDATE(), INTERVAL $time_span DAY)";
 		}
 		$request .= " AND post_status='publish' AND meta_key='_liked'";
 		$request .= " ORDER BY ".$wpdb->prefix."postmeta.meta_value+0 DESC LIMIT $numberOf";
