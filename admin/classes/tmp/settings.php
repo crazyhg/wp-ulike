@@ -86,6 +86,12 @@
 			'label' 		=> __('Automatic display', 'alimir'),
 			'checkboxlabel' => __('Activate', 'alimir')
 		  ),
+		  'async_loading'  	=> array(
+			'type'  		=> 'checkbox',
+			'default'		=> 1,
+			'label' 		=> __('Asynchronous loading', 'alimir'),
+			'checkboxlabel' => __('Activate', 'alimir')
+		  ),
 		  'auto_display_position'  => array(
 			'type'    		=> 'radio',
 			'label'   		=> __( 'Auto Display Position','alimir'),

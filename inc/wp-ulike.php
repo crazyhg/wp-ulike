@@ -1,4 +1,35 @@
 <?php
+	/**
+	 * wp_ulike function for posts like/unlike display
+	 *
+	 * @author       	hg
+	 * @since           2.4
+	 * @return			String
+	 */
+	function wp_ulike_ajax($arg) {
+		//global variables
+		global $post;
+		
+		$post_ID = $post->ID;
+		
+		if(
+			(wp_ulike_get_setting( 'wp_ulike_posts', 'only_registered_users') != '1')
+		or
+			(wp_ulike_get_setting( 'wp_ulike_posts', 'only_registered_users') == '1' && is_user_logged_in())
+		){
+		
+		$wp_ulike = '<div class="wp-ulike-ajax" data-post-id="'.$post_ID.'"></div>';
+		
+		if ($arg == 'put') {
+			return $wp_ulike;
+		}
+		else {
+			echo $wp_ulike;
+		}
+		
+		}//end !only_registered_users condition
+		
+	}
 	
 	/**
 	 * wp_ulike function for posts like/unlike display
@@ -366,5 +397,14 @@
 			echo $wp_ulike_class->wp_get_ulike($data);
 		}
 		
+		wp_die(); // this is required to terminate immediately and return a proper response
+	}
+	
+	function wp_ulike_ajax_output(){
+		global $post;
+		$post_id = $_POST[ 'post_id' ];
+		$post = get_post( $post_id );
+		wp_reset_postdata();
+		wp_ulike('get');
 		wp_die(); // this is required to terminate immediately and return a proper response
 	}

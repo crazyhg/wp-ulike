@@ -9,6 +9,44 @@ jQuery(document).ready(function($) {
 	//add button class in buddypress ulike button.
 	$('.activity-content .wpulike .counter a').addClass("button");
 	
+    function ajaxOutput($wpUlikeAjax) {
+		var id = $(this).data('post-id');
+		$.ajax({
+			type:'POST',
+			url: ulike_obj.ajaxurl,
+			data:{
+				action:'wp_ulike_ajax_output',
+				id: id,
+				type: 'likeThis'
+			},
+			success: function(data) {
+				console.log("DATA:"+data)
+				$('.wpulike-ajax').each(function() {
+					$(this).html(data);
+				});
+			}
+		});
+	}
+
+	var $wpUlikeAjax = $('.wp-ulike-ajax');
+	if ($wpUlikeAjax.length) {
+		var postId = $wpUlikeAjax.data('post-id');
+		$.ajax({
+			type:'POST',
+			url: ulike_obj.ajaxurl,
+			data: {
+				action:'wp_ulike_ajax_output',
+				post_id: postId,
+				type: 'likeThis'
+			},
+			success: function(data) {
+				$wpUlikeAjax.each(function() {
+					$(this).html(data);
+				});
+			}
+		});
+	}
+
 	//start WP ULike process
 	$(document).on('click', '.wp_ulike_btn',function(e) {
 		var type 	= $(this).data('ulike-type');

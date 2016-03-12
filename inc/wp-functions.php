@@ -29,11 +29,16 @@
 		function wp_ulike_put_posts($content) {
 			//auto display position
 			$position = wp_ulike_get_setting( 'wp_ulike_posts', 'auto_display_position');
+			$async_loading = wp_ulike_get_setting( 'wp_ulike_posts', 'async_loading');
 			$button = '';
 			
 			//add wp_ulike function
 			if(	!is_feed() && wp_ulike_post_auto_display_filters()){
-				$button = wp_ulike('put');
+				if ($async_loading) {
+					$button = wp_ulike_ajax('put');
+				} else {
+					$button = wp_ulike('put');
+				}
 			}
 			
 			//return by position
@@ -629,4 +634,4 @@
   WP ULike Class
 *******************************************************/
 	
-	include( plugin_dir_path(__FILE__) . 'classes/class-ulike.php');	
+	include( plugin_dir_path(__FILE__) . 'classes/class-ulike.php');
