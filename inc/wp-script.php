@@ -16,7 +16,7 @@
 		//enqueue JQuery script
 		wp_enqueue_script( 'jquery' );
 		//Add ulike script file with special functions.
-		wp_enqueue_script('wp_ulike', plugins_url('assets/js/wp-ulike-scripts.js', dirname(__FILE__)), array('jquery'), '1.2.1');
+		wp_enqueue_script('wp_ulike', plugins_url('assets/js/wp-ulike-scripts.min.js', dirname(__FILE__)), array('jquery'), '2.3.2');
 		//Add ulike plugin file, such as: tooltip, transaction, ...
 		wp_enqueue_script('wp_ulike_plugins', plugins_url('assets/js/wp-ulike-plugins.js', dirname(__FILE__)), array('jquery'), '1.0.0', true);	
 		//localize script
