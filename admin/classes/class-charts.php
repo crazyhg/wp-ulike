@@ -1,8 +1,15 @@
 <?php 
 if ( ! class_exists( 'wp_ulike_stats' ) ) {
 
-	class wp_ulike_stats{
+	class wp_ulike_stats extends wp_ulike_widget{
 		private $wpdb;
+
+		/**
+		 * Instance of this class.
+		 *
+		 * @var      object
+		 */
+		protected static $instance  = null;				
 		
 		/**
 		 * Constructor
@@ -20,31 +27,27 @@ if ( ! class_exists( 'wp_ulike_stats' ) ) {
 		 * @author       	Alimir
 		 * @since           2.0
 		 * @updated         2.3
+		 * @updated         3.0
 		 * @return			Void
 		 */		
 		public function enqueue_script($hook)
 		{
-			$currentScreen 	= get_current_screen();
+			// $currentScreen 	= get_current_screen();
 			$get_option 	= get_option( 'wp_ulike_statistics_screen' );
-			
-			if ( $currentScreen->id != $hook ) return;
-			
-			if(is_rtl())
-				wp_register_style( 'wp_ulike_stats_style', plugins_url( 'css/statistics-rtl.css' , __FILE__ ) );
-			else
-				wp_register_style( 'wp_ulike_stats_style', plugins_url( 'css/statistics.css' , __FILE__ ) );
-			
-			//wp_enqueue_style 
-			wp_enqueue_style( 'wp_ulike_stats_style' );			
-			
-			wp_register_script('wp_ulike_chart', plugins_url( 'js/chart.min.js' , __FILE__ ), array('jquery'), null, true);
-			wp_enqueue_script('wp_ulike_chart');
-			wp_register_script('wp_ulike_vmap', plugins_url( 'js/jquery.vmap.min.js' , __FILE__ ), array('jquery'), null, true);
-			wp_enqueue_script('wp_ulike_vmap');
-			wp_register_script('wp_ulike_world', plugins_url( 'js/jquery.vmap.world.js' , __FILE__ ), array('jquery'), null, true);
-			wp_enqueue_script('wp_ulike_world');
-			wp_register_script('wp_ulike_stats', plugins_url( 'js/statistics.js' , __FILE__ ), array('jquery'), null, true);
-			wp_enqueue_script('wp_ulike_stats');
+
+			// if ( $currentScreen->id != $hook ) {
+			// 	return;
+			// }
+
+			// Register Script
+			wp_enqueue_script(
+				'wp_ulike_stats',
+				WP_ULIKE_ADMIN_URL . '/classes/js/statistics.js',
+				array('jquery'),
+				null,
+				true
+			);
+
 			wp_localize_script( 'wp_ulike_stats', 'wp_ulike_statistics', array(
 				'posts_date_labels' 		=> $this->posts_dataset('label'),
 				'comments_date_labels' 		=> $this->comments_dataset('label'),
@@ -55,7 +58,8 @@ if ( ! class_exists( 'wp_ulike_stats' ) ) {
 				'activities_dataset' 		=> $this->activities_dataset('dataset'),
 				'topics_dataset' 			=> $this->topics_dataset('dataset'),
 				'data_map' 					=> $get_option['likers_map'] == 1 ? $this->data_map() : null
-			));			
+			));
+
 			wp_enqueue_script('postbox');
 		}
 		
@@ -202,17 +206,16 @@ if ( ! class_exists( 'wp_ulike_stats' ) ) {
 		 */					
 		public function get_all_data_date($table,$name){
 			$table_name = $this->wpdb->prefix . $table;
-			if($this->wpdb->get_var("SHOW TABLES LIKE '$table_name'") == $table_name) {
-				$return_val = $this->wpdb->get_var(
-				"
-				SELECT SUM(meta_value)
-				FROM ".$this->wpdb->prefix."$table
-				WHERE meta_key LIKE '$name'
-				");
-				return $return_val;
+			if( $this->wpdb->get_var("SHOW TABLES LIKE '$table_name'") == $table_name ) {
+				return $this->wpdb->get_var( "
+							SELECT SUM(meta_value)
+							FROM ".$this->wpdb->prefix."$table
+							WHERE meta_key LIKE '$name'
+						" );
 			}
-			else
-				return 0;
+			else {
+				return ;
+			}
 		}
 		
 		
@@ -221,38 +224,49 @@ if ( ! class_exists( 'wp_ulike_stats' ) ) {
 		 *
 		 * @author       	Alimir
 		 * @since           2.3
+		 * @updated         2.6 //added new GeoIP system
+		 * @updated         3.0
 		 * @return			String
 		*/
-		public function data_map(){
-			$country_data = array();
-			$return_val = $this->wpdb->get_results(
-			"
-			SELECT T.user_ip AS get_user_ip , SUM(T.count_user_ip) get_count_user_ip
-			FROM(
-			SELECT ip AS user_ip, count(ip) AS count_user_ip
-			FROM ".$this->wpdb->prefix."ulike
-			GROUP BY user_ip
-			UNION ALL
-			SELECT ip AS user_ip, count(ip) AS count_user_ip
-			FROM ".$this->wpdb->prefix."ulike_activities
-			GROUP BY user_ip
-			UNION ALL
-			SELECT ip AS user_ip, count(ip) AS count_user_ip
-			FROM ".$this->wpdb->prefix."ulike_comments
-			GROUP BY user_ip
-			UNION ALL
-			SELECT ip AS user_ip, count(ip) AS count_user_ip
-			FROM ".$this->wpdb->prefix."ulike_forums
-			GROUP BY user_ip
-			) AS T
-			GROUP BY get_user_ip
-			");
+		public function data_map( $country_data =  array() ){
+
+			if ( false === ( $return_val = get_transient( 'wp_ulike_get_likers_dispersal_statistics' ) ) ) {
+				// Make new sql request
+				$return_val = $this->wpdb->get_results( "
+									SELECT T.user_ip AS get_user_ip , SUM(T.count_user_ip) AS get_count_user_ip
+									FROM(
+									SELECT ip AS user_ip, count(ip) AS count_user_ip
+									FROM ".$this->wpdb->prefix."ulike
+									GROUP BY user_ip
+									UNION ALL
+									SELECT ip AS user_ip, count(ip) AS count_user_ip
+									FROM ".$this->wpdb->prefix."ulike_activities
+									GROUP BY user_ip
+									UNION ALL
+									SELECT ip AS user_ip, count(ip) AS count_user_ip
+									FROM ".$this->wpdb->prefix."ulike_comments
+									GROUP BY user_ip
+									UNION ALL
+									SELECT ip AS user_ip, count(ip) AS count_user_ip
+									FROM ".$this->wpdb->prefix."ulike_forums
+									GROUP BY user_ip
+									) AS T
+									GROUP BY get_user_ip
+								" );
+				// Set transient
+				set_transient( 'wp_ulike_get_likers_dispersal_statistics', $return_val, 24 * HOUR_IN_SECONDS );
+			}
 			
 			foreach($return_val as $return){
-				$country_data[strtolower(getCountryFromIP($return->get_user_ip, "code"))] += $return->get_count_user_ip;
+				//$cdata = strtolower(wp_ulike_get_geoip($return->get_user_ip,'code'));
+				$cdata = strtolower( getCountryFromIP( $return->get_user_ip, "code" ) );
+				if( ! isset( $country_data[$cdata] ) ) {
+					$country_data[$cdata] = 0;
+				}
+				$country_data[$cdata] += $return->get_count_user_ip;
 			}
-		
-			return json_encode($country_data);
+			
+			return json_encode( $country_data );
 		}		
 		
 		/**
@@ -260,37 +274,88 @@ if ( ! class_exists( 'wp_ulike_stats' ) ) {
 		 *
 		 * @author       	Alimir
 		 * @since           2.3
+		 * @since           3.0
 		 * @return			Array
 		 */					
 		public function get_top_likers(){
-		$request = "SELECT T.user_id, SUM(T.CountUser) AS SumUser, T.ip
-					FROM(
-					SELECT user_id, count(user_id) AS CountUser, ip
-					FROM ".$this->wpdb->prefix."ulike
-					GROUP BY user_id
-					UNION ALL
-					SELECT user_id, count(user_id) AS CountUser, ip
-					FROM ".$this->wpdb->prefix."ulike_activities
-					GROUP BY user_id
-					UNION ALL
-					SELECT user_id, count(user_id) AS CountUser, ip
-					FROM ".$this->wpdb->prefix."ulike_comments
-					GROUP BY user_id
-					UNION ALL
-					SELECT user_id, count(user_id) AS CountUser, ip
-					FROM ".$this->wpdb->prefix."ulike_forums
-					GROUP BY user_id
-					) AS T
-					GROUP BY T.user_id
-					ORDER BY SumUser DESC LIMIT 10
-					";
-		return $this->wpdb->get_results($request);
+
+			if ( false === ( $result = get_transient( 'wp_ulike_get_top_likers' ) ) ) {
+				// Make new sql request
+				$result = $this->wpdb->get_results( "
+									SELECT T.user_id, SUM(T.CountUser) AS SumUser, T.ip
+									FROM(
+									SELECT user_id, count(user_id) AS CountUser, ip
+									FROM ".$this->wpdb->prefix."ulike
+									GROUP BY user_id
+									UNION ALL
+									SELECT user_id, count(user_id) AS CountUser, ip
+									FROM ".$this->wpdb->prefix."ulike_activities
+									GROUP BY user_id
+									UNION ALL
+									SELECT user_id, count(user_id) AS CountUser, ip
+									FROM ".$this->wpdb->prefix."ulike_comments
+									GROUP BY user_id
+									UNION ALL
+									SELECT user_id, count(user_id) AS CountUser, ip
+									FROM ".$this->wpdb->prefix."ulike_forums
+									GROUP BY user_id
+									) AS T
+									GROUP BY T.user_id
+									ORDER BY SumUser DESC LIMIT 10
+								" );
+				// Set transient
+				set_transient( 'wp_ulike_get_top_likers', $result, 24 * HOUR_IN_SECONDS );
+			}
+
+			return $result;
 		}
 		
+		/**
+		 * Tops Summaries
+		 *
+		 * @author       	Alimir
+		 * @since           2.6
+		 * @since           3.0
+		 * @return			Array
+		 */					
+		public function get_tops( $type ){
+			switch( $type ){
+				case 'top_posts':
+					return parent::most_liked_posts();
+					break;
+				case 'top_comments':
+					return parent::most_liked_comments();
+				break;
+				case 'top_activities':
+					return parent::most_liked_activities();
+				break;
+				case 'top_topics':
+					return parent::most_liked_topics();
+				break;
+				default:
+					return;
+			}
+		}
+
+		/**
+		 * Return an instance of this class.
+		 *
+		 * @return    object    A single instance of this class.
+		 */
+		public static function get_instance() {
+
+			// If the single instance hasn't been set, set it now.
+			if ( null == self::$instance ) {
+				self::$instance = new self;
+			}
+
+			return self::$instance;
+		}	
+
 	}
 	
-	//create global variable
+	// global variable
 	global $wp_ulike_stats;
-	$wp_ulike_stats = new wp_ulike_stats();
+	$wp_ulike_stats = wp_ulike_stats::get_instance();
 	
 }

@@ -1,24 +1,105 @@
+/*!
+ * Radio image select
+ **/
+(function($) {
+  // Register jQuery plugin.
+  $.fn.radioImageSelect = function( options ) {
+    // Default var for options.
+    var defaults = {
+        // Img class.
+        imgItemClass: 'radio-img-item',
+        // Img Checked class.
+        imgItemCheckedClass: 'item-checked',
+        // Is need hide label connected?
+        hideLabel: true
+      },
+
+      /**
+       * Method firing when need to update classes.
+       */
+        syncClassChecked = function( img ) {
+        var radioName = img.prev('input[type="radio"]').attr('name');
+
+        $('input[name="' + radioName + '"]').each(function() {
+          // Define img by radio name.
+          var myImg = $(this).next('img');
+
+          // Add / Remove Checked class.
+          if ( $(this).prop('checked') ) {
+            myImg.addClass(options.imgItemCheckedClass);
+          } else {
+            myImg.removeClass(options.imgItemCheckedClass);
+          }
+        });
+      };
+
+    // Parse args.. 
+    options = $.extend( defaults, options );
+
+    // Start jQuery loop on elements..
+    return this.each(function() {
+      $(this)
+        // First all we are need to hide the radio input.
+        .hide()
+        // And add new img element by data-image source.
+        .after('<img src="' + $(this).data('image') + '" alt="radio image" />');
+
+      // Define the new img element.
+      var img = $(this).next('img');
+      // Add item class.
+      img.addClass(options.imgItemClass);
+
+      // Check if need to hide label connected.
+      if ( options.hideLabel ) {
+        $('label[for=' + $(this).attr('id') + ']').hide();
+      }
+
+      // When we are created the img and radio get checked, we need add checked class.
+      if ( $(this).prop('checked') ) {
+        img.addClass(options.imgItemCheckedClass);
+      }
+
+      // Create click event on img element.
+      img.on('click', function(e) {
+        $(this)
+          // Prev to current radio input.
+          .prev('input[type="radio"]')
+          // Set checked attr.
+          .prop('checked', true)
+          // Run change event for radio element.
+          .trigger('change');
+
+        // Firing the sync classes.
+        syncClassChecked($(this));
+      } );
+    });
+  }
+}) (jQuery);
+
+/*!
+ * Settings scripts
+ **/
 jQuery(document).ready(function ($) {
   'use strict';
   var form = $('form.wrap'),
     page = $('input[name="option_page"]', form).val(),
-    tabs = $('.wm-settings-tabs', form),
+    tabs = $('.wp-ulike-settings-tabs', form),
     current = parseInt(sessionStorage.getItem(page + '_current_tab'), 10) || 0;
-  $('.wm-settings-section', form).each(function (i, el) {
+  $('.wp-ulike-settings-section', form).each(function (i, el) {
     var setting = $(el).val(),
-      title = $(el).prev('h3'),
+      title = $(el).prev('h2'),
       section = $('<div>').attr('id', page + '_' + setting);
     $(el).nextAll().each(function () {
       var tag = $(this).prop('tagName');
-      if (tag === 'H3' || tag === 'INPUT') { return false; }
+      if (tag === 'H2' || tag === 'INPUT') { return false; }
       $(this).appendTo(section);
     });
     if (tabs.length && title.length) {
-      section.addClass('wm-settings-tab').hide();
+      section.addClass('wp-ulike-settings-tab').hide();
       title.appendTo(tabs).click(function (e) {
         e.preventDefault();
         if (!title.hasClass('active')) {
-          $('.wm-settings-tab.active', form).fadeOut('fast', function () {
+          $('.wp-ulike-settings-tab.active', form).fadeOut('fast', function () {
             $('.active', form).removeClass('active');
             title.addClass('active');
             section.fadeIn('fast').addClass('active');
@@ -39,10 +120,10 @@ jQuery(document).ready(function ($) {
   $('label[for="hidden"]', form).each(function () {
     $(this).parents('tr').addClass('hide-label');
   });
-  $('.wm-settings-media', form).each(function () {
+  $('.wp-ulike-settings-media', form).each(function () {
     var frame,
-      select = $('.wm-select-media', this),
-      remove = $('.wm-remove-media', this),
+      select = $('.wp-ulike-select-media', this),
+      remove = $('.wp-ulike-remove-media', this),
       input = $('input', this),
       preview = $('img', this),
       title = select.attr('title'),
@@ -85,7 +166,7 @@ jQuery(document).ready(function ($) {
       remove.hide();
     });
   });
-  $('.wm-settings-action', form).each(function () {
+  $('.wp-ulike-settings-action', form).each(function () {
     var submit = $('[type="button"]', this),
       spinner = $('<img>').attr({
         src: ajax.spinner,
@@ -146,7 +227,9 @@ jQuery(document).ready(function ($) {
       });
     });
   });
-  $('.wm-settings-color').wpColorPicker();
+  $('.wp-ulike-settings-color').wpColorPicker();
+
+  $('.visual-select input').radioImageSelect();
   
 	$('#wp-ulike-settings_wp_ulike_customize tr:not(:first-child)').addClass('custom-style-show');
 	
@@ -166,26 +249,26 @@ jQuery(document).ready(function ($) {
 	$('#wp-ulike-settings_wp_ulike_general tr:nth-child(2), #wp-ulike-settings_wp_ulike_general tr:nth-child(3)').addClass('button-text-show');
 	$('#wp-ulike-settings_wp_ulike_general tr:nth-child(4), #wp-ulike-settings_wp_ulike_general tr:nth-child(5)').addClass('button-icon-show');
 
-	if (!$(".wp_ulike_check_text").is(":checked")) {
+	if (!$(".wp_ulike_check_text").next('img').hasClass("item-checked")) {
 		$('.button-text-show').hide();
 	}
-	if (!$(".wp_ulike_check_image").is(":checked")) {
+	if (!$(".wp_ulike_check_image").next('img').hasClass("item-checked")) {
 		$('.button-icon-show').hide();
 	}
-	
-    $(".wp_ulike_check_text, .wp_ulike_check_image").click(function () {
-        if ($(".wp_ulike_check_text").is(":checked")) {
-            $('.button-text-show').fadeIn();
-        }
-        if (!$(".wp_ulike_check_text").is(":checked")) {
-            $('.button-text-show').hide();
-        }		
-        if ($(".wp_ulike_check_image").is(":checked")) {
-            $('.button-icon-show').fadeIn();
-        }
-        if (!$(".wp_ulike_check_image").is(":checked")) {
-            $('.button-icon-show').hide();
-        }
-    }); 
+
+  $(".wp_ulike_check_text, .wp_ulike_check_image").next('img').click(function () {
+      if ($(".wp_ulike_check_text").next('img').hasClass("item-checked")) {
+          $('.button-text-show').fadeIn();
+      }
+      if (!$(".wp_ulike_check_text").next('img').hasClass("item-checked")) {
+          $('.button-text-show').hide();
+      }		
+      if ($(".wp_ulike_check_image").next('img').hasClass("item-checked")) {
+          $('.button-icon-show').fadeIn();
+      }
+      if (!$(".wp_ulike_check_image").next('img').hasClass("item-checked")) {
+          $('.button-icon-show').hide();
+      }
+  }); 
   
 });
