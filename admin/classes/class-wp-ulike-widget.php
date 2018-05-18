@@ -446,22 +446,20 @@ if ( ! class_exists( 'wp_ulike_widget' ) ) {
 		 * @since           2.4
 		 * @return			String
 		 */	    
-	    public function period($period){
-	        switch ($period) {
-				case "today":
-					return "AND DATE(date_time) = DATE(NOW())";
-				case "yesterday":
-					return "AND DATE(date_time) = DATE(subdate(current_date, 1))";
-				case "week":
-					return "AND week(DATE(date_time)) = week(DATE(NOW()))";
-				case "month":
-					return "AND month(DATE(date_time)) = month(DATE(NOW()))";
-				case "year":
-					return "AND year(DATE(date_time)) = year(DATE(NOW()))";
-				default:
-					return "";
-	        }
-	    }
+		public function period($period) {
+			$days = array(
+				'today' => 1,
+				'yesterday' => 2,
+				'week' => 7,
+				'month' => 30,
+				'year' => 365
+			);
+
+			if ( isset( $days[$period] ) ) {
+				return "AND DATE(date_time) >= DATE_SUB(CURDATE(), INTERVAL {$days[$period]} DAY)";
+			}
+			return '';
+		}
 
 		/**
 		 * Display Widget
