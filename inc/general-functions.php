@@ -250,6 +250,12 @@ if( ! function_exists( 'wp_ulike_get_options_info' ) ){
 							'label'   => __( 'Themes',WP_ULIKE_SLUG),
 							'options' => call_user_func('wp_ulike_generate_templates_list')
 						),                 
+						'async_loading' => array(
+							'type'          => 'checkbox',
+							'default'       => 1,
+							'label'         => __('Asynchronous loading', WP_ULIKE_SLUG),
+							'checkboxlabel' => __('Activate', WP_ULIKE_SLUG)
+						),
 						'auto_display' => array(
 							'type'          => 'checkbox',
 							'default'       => 1,
@@ -760,6 +766,36 @@ if( ! function_exists( 'wp_ulike' ) ){
 				return apply_filters('wp_ulike_login_alert_template', '<p class="alert alert-info fade in" role="alert">'.__('You need to login in order to like this post: ',WP_ULIKE_SLUG).'<a href="'.wp_login_url( get_permalink() ).'"> '.__('click here',WP_ULIKE_SLUG).' </a></p>');
 			}
 		}//end only_registered_users condition
+	}
+}
+
+/**
+ * Display Like button container
+ *
+ * @author          crazyhg
+ * @param           String 	$type
+ * @param           Array 	$args
+ * @return          String
+ */
+if( ! function_exists( 'wp_ulike_ajax' ) ){
+	function wp_ulike_ajax( $type = 'get', $args = array() ) {
+		//global variables
+		global $post;
+
+		$post_ID = isset( $args['id'] ) ? $args['id'] : $post->ID;
+
+		if( (wp_ulike_get_setting( 'wp_ulike_posts', 'only_registered_users') != '1') or (wp_ulike_get_setting( 'wp_ulike_posts', 'only_registered_users') == '1' && is_user_logged_in() ) ) {
+			$wp_ulike = '<div class="wp-ulike-ajax" data-post-id="'.$post_ID.'"></div>';
+
+			if ($type == 'put') {
+				return $wp_ulike;
+			}
+			else {
+				echo $wp_ulike;
+			}
+
+		}//end !only_registered_users condition
+		//TODO:elseif
 	}
 }
 

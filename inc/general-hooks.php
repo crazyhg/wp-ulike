@@ -81,11 +81,12 @@ if( ! function_exists( 'wp_ulike_put_posts' ) ){
 	function wp_ulike_put_posts($content) {
 		//auto display position
 		$position = wp_ulike_get_setting( 'wp_ulike_posts', 'auto_display_position');
+		$async_loading = wp_ulike_get_setting( 'wp_ulike_posts', 'async_loading');
 		$button = '';
 		
 		//add wp_ulike function
 		if(	!is_feed() && is_wp_ulike( wp_ulike_get_setting( 'wp_ulike_posts', 'auto_display_filter') ) ){
-			$button = wp_ulike('put');
+			$button = $async_loading ? wp_ulike_ajax('put') : wp_ulike('put');
 		}
 		
 		//return by position

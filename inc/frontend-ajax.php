@@ -129,4 +129,14 @@ function wp_ulike_process(){
 }
 //	wp_ajax hooks for the custom AJAX requests 
 add_action( 'wp_ajax_wp_ulike_process'			, 'wp_ulike_process' );
-add_action( 'wp_ajax_nopriv_wp_ulike_process'	, 'wp_ulike_process' );		
+add_action( 'wp_ajax_nopriv_wp_ulike_process'	, 'wp_ulike_process' );
+
+function wp_ulike_ajax_output(){
+    global $post;
+    $post_id = (int) $_POST[ 'post_id' ];
+    $post = get_post( $post_id );
+    wp_ulike('get');
+    wp_die(); // this is required to terminate immediately and return a proper response
+}
+add_action('wp_ajax_wp_ulike_ajax_output', 'wp_ulike_ajax_output');
+add_action('wp_ajax_nopriv_wp_ulike_ajax_output', 'wp_ulike_ajax_output');
