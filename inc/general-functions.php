@@ -100,6 +100,22 @@ if( ! function_exists( 'wp_ulike_delete_all_logs' ) ){
 }
 
 
+if( ! function_exists( 'wp_ulike_anonymize_logs' ) ) {
+	function wp_ulike_anonymize_logs() {
+		global $wpdb;
+		$logs_table = $wpdb->prefix."ulike";
+		if ( $wpdb->query("UPDATE $logs_table SET ip = CONCAT(SUBSTRING_INDEX(ip, '.', 3), '.0');") === FALSE ) {
+			wp_send_json_error( __( 'Failed! An Error Has Occurred While Anonymizing IPs', WP_ULIKE_SLUG ) );
+		} else {
+			wp_send_json_success( __( 'Success! All IPs Have Been Anonymized', WP_ULIKE_SLUG ) );
+		}
+		//TODO: other tables
+		//TODO: ipv6 -- column is only varchar(30)
+	}
+}
+
+
+
 /**
  * Generate templates list
  *
@@ -235,7 +251,20 @@ if( ! function_exists( 'wp_ulike_get_options_info' ) ){
 						'unlike_notice' => array(
 							'default' => __('Sorry! You unliked this.',WP_ULIKE_SLUG),
 							'label'   => __( 'Unliked Notice Message', WP_ULIKE_SLUG)
-						)		  
+						),
+						'anonymization' => array(
+							'type'          => 'checkbox',
+							'default'       => 0,
+							'label'         => __('Anonymize IPs', WP_ULIKE_SLUG),
+							'checkboxlabel' => __('Activate', WP_ULIKE_SLUG),
+							'description'   => __('Custom toast messages after each activity', WP_ULIKE_SLUG)
+						),
+						'anonymize_logs' => array(
+							'type'        => 'action',
+							'label'       => __( 'Anonymize existing logs', WP_ULIKE_SLUG ),
+							'description' => __( 'This Action Is Not Reversible.', WP_ULIKE_SLUG),
+							'action'      => 'wp_ulike_anonymize_logs'
+						),
 					)
 				);//end wp_ulike_general
 				break;
@@ -1454,6 +1483,79 @@ if( ! function_exists( 'wp_ulike_date_i18n' ) ){
 	}
 }
 	
+
+/**
+ * Return an anonymized IPv4 or IPv6 address.
+ *
+ * @since 4.9.6 Abstracted from `WP_Community_Events::get_unsafe_client_ip()`.
+ *
+ * @param  string $ip_addr        The IPv4 or IPv6 address to be anonymized.
+ * @param  bool   $ipv6_fallback  Optional. Whether to return the original IPv6 address if the needed functions
+ *                                to anonymize it are not present. Default false, return `::` (unspecified address).
+ * @return string  The anonymized IP address.
+ */
+if( ! function_exists( 'wp_privacy_anonymize_ip' ) ){
+	function wp_privacy_anonymize_ip( $ip_addr, $ipv6_fallback = false ) {
+		// Detect what kind of IP address this is.
+		$ip_prefix = '';
+		$is_ipv6   = substr_count( $ip_addr, ':' ) > 1;
+		$is_ipv4   = ( 3 === substr_count( $ip_addr, '.' ) );
+
+		if ( $is_ipv6 && $is_ipv4 ) {
+			// IPv6 compatibility mode, temporarily strip the IPv6 part, and treat it like IPv4.
+			$ip_prefix = '::ffff:';
+			$ip_addr   = preg_replace( '/^\[?[0-9a-f:]*:/i', '', $ip_addr );
+			$ip_addr   = str_replace( ']', '', $ip_addr );
+			$is_ipv6   = false;
+		}
+
+		if ( $is_ipv6 ) {
+			// IPv6 addresses will always be enclosed in [] if there's a port.
+			$left_bracket  = strpos( $ip_addr, '[' );
+			$right_bracket = strpos( $ip_addr, ']' );
+			$percent       = strpos( $ip_addr, '%' );
+			$netmask       = 'ffff:ffff:ffff:ffff:0000:0000:0000:0000';
+
+			// Strip the port (and [] from IPv6 addresses), if they exist.
+			if ( false !== $left_bracket && false !== $right_bracket ) {
+				$ip_addr = substr( $ip_addr, $left_bracket + 1, $right_bracket - $left_bracket - 1 );
+			} elseif ( false !== $left_bracket || false !== $right_bracket ) {
+				// The IP has one bracket, but not both, so it's malformed.
+				return '::';
+			}
+
+			// Strip the reachability scope.
+			if ( false !== $percent ) {
+				$ip_addr = substr( $ip_addr, 0, $percent );
+			}
+
+			// No invalid characters should be left.
+			if ( preg_match( '/[^0-9a-f:]/i', $ip_addr ) ) {
+				return '::';
+			}
+
+			// Partially anonymize the IP by reducing it to the corresponding network ID.
+			if ( function_exists( 'inet_pton' ) && function_exists( 'inet_ntop' ) ) {
+				$ip_addr = inet_ntop( inet_pton( $ip_addr ) & inet_pton( $netmask ) );
+				if ( false === $ip_addr) {
+					return '::';
+				}
+			} elseif ( ! $ipv6_fallback ) {
+				return '::';
+			}
+		} elseif ( $is_ipv4 ) {
+			// Strip any port and partially anonymize the IP.
+			$last_octet_position = strrpos( $ip_addr, '.' );
+			$ip_addr             = substr( $ip_addr, 0, $last_octet_position ) . '.0';
+		} else {
+			return '0.0.0.0';
+		}
+
+		// Restore the IPv6 prefix to compatibility mode addresses.
+		return $ip_prefix . $ip_addr;
+	}
+}
+
 
 /*******************************************************
   Templates

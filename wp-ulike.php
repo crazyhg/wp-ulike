@@ -191,12 +191,15 @@ if ( ! class_exists( 'WPULIKE' ) ) :
 	            spl_autoload_register( "__autoload" );
 	        }
 	        spl_autoload_register( array( $this, 'autoload' ) );
-
-			// global variable of user IP
-			$wp_user_IP     = $this->get_ip();	        
 			
 			// load common functionalities
 			include_once( WP_ULIKE_INC_DIR . '/index.php' );
+
+			// global variable of user IP
+			$wp_user_IP     = $this->get_ip();
+			if ( wp_ulike_get_setting( 'wp_ulike_general', 'anonymization') == '1' ) {
+				$wp_user_IP = wp_privacy_anonymize_ip( $wp_user_IP );
+			}
 			
 			// global wp_ulike_class
 			$wp_ulike_class = wp_ulike::get_instance();	        
