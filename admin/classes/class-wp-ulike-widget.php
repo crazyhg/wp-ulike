@@ -47,22 +47,17 @@ if ( ! class_exists( 'wp_ulike_widget' ) ) {
 			// Extract settings
 			extract($settings);
 
-			if ( false === ( $posts = get_transient( 'wp_ulike_get_most_liked_posts' ) ) ) {
-				// Make new sql request
-		        $posts 		= $wpdb->get_results( "
-								SELECT p.ID, p.post_title, p.post_content, m.meta_value 
-								FROM  $wpdb->posts AS p, $wpdb->postmeta AS m, ".$wpdb->prefix."ulike AS l  
-								WHERE p.ID        = m.post_ID 
-								AND m.post_ID     = l.post_id 
-								AND p.post_status = 'publish' 
-								AND m.meta_key    = '_liked' 
-								".$this->period($period)." 
-								GROUP BY p.ID 
-								ORDER BY CAST( m.meta_value AS SIGNED ) DESC LIMIT $numberOf
-	                    	" );
-
-		        set_transient( 'wp_ulike_get_most_liked_posts', $posts, 6 * HOUR_IN_SECONDS );
-			}
+			// Make new sql request
+			$posts 		= $wpdb->get_results( "
+							SELECT p.ID, p.post_title, p.post_content, m.meta_value 
+							FROM  $wpdb->posts AS p, $wpdb->postmeta AS m 
+							WHERE p.ID        = m.post_ID 
+							AND p.post_status = 'publish' 
+							AND m.meta_key    = '_liked' 
+							".$this->period($period, 'post_date')." 
+							GROUP BY p.ID 
+							ORDER BY CAST( m.meta_value AS SIGNED ) DESC LIMIT $numberOf
+                    	" );
 
 			foreach ($posts as $post) {
 				$post_title = stripslashes($post->post_title);
@@ -446,7 +441,7 @@ if ( ! class_exists( 'wp_ulike_widget' ) ) {
 		 * @since           2.4
 		 * @return			String
 		 */	    
-		public function period($period) {
+		public function period($period, $column = 'date_time') {
 			$days = array(
 				'today' => 1,
 				'yesterday' => 2,
@@ -456,7 +451,7 @@ if ( ! class_exists( 'wp_ulike_widget' ) ) {
 			);
 
 			if ( isset( $days[$period] ) ) {
-				return "AND DATE(date_time) >= DATE_SUB(CURDATE(), INTERVAL {$days[$period]} DAY)";
+				return "AND DATE($column) >= DATE_SUB(CURDATE(), INTERVAL {$days[$period]} DAY)";
 			}
 			return '';
 		}
